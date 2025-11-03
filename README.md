@@ -50,7 +50,7 @@ Displayed on Web Interface
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/<yourusername>/citation-compass.git
+git clone https://github.com/sqlxe/citation-compass.git
 cd citation-compass
 ```
 
