@@ -48,23 +48,7 @@ Displayed on Web Interface
 
 ## ⚙️ Getting Started
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/sqlxe/citation-compass.git
-cd citation-compass
-```
-
-### 2. Install Dependencies
-```bash
-npm install
-```
-
-### 3. Start Development Server
-```bash
-npm run dev
-```
-The site should now be running at [http://localhost:5173](http://localhost:5173).
-
+### https://citationcompass.vercel.app
 ---
 
 ## 🧾 Example Search
@@ -74,13 +58,6 @@ The site should now be running at [http://localhost:5173](http://localhost:5173)
 **Results:**
 - *Attention Is All You Need* — Vaswani et al., 2017  
 - *BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding* — Devlin et al., 2018  
-
----
-
-## 🌍 Deployment
-
-You can deploy the site easily using **Vercel**, **Netlify**, or directly through **Lovable**.  
-If you’re using Lovable, just go to **Project → Share → Publish**.
 
 ---
 
