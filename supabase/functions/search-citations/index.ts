@@ -22,18 +22,23 @@ serve(async (req) => {
     console.log("Searching for:", query);
 
     // Step 1: Use AI to expand the query for better academic search
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const expandedQuery = await expandQuery(query, LOVABLE_API_KEY);
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    const expandedQuery = await expandQuery(query, ANTHROPIC_API_KEY);
     console.log("Expanded query:", expandedQuery);
 
-    // Step 2: Search multiple academic databases in parallel
-    const [semanticResults, crossrefResults] = await Promise.allSettled([
+    // Step 2: Search using Tavily for web results and academic databases
+    const [tavilyResults, semanticResults, crossrefResults] = await Promise.allSettled([
+      searchTavily(expandedQuery),
       searchSemanticScholar(expandedQuery),
       searchCrossRef(expandedQuery),
     ]);
 
     // Combine and deduplicate results
     const allResults: any[] = [];
+    
+    if (tavilyResults.status === "fulfilled") {
+      allResults.push(...tavilyResults.value);
+    }
     
     if (semanticResults.status === "fulfilled") {
       allResults.push(...semanticResults.value);
@@ -92,22 +97,22 @@ async function expandQuery(query: string, apiKey: string | undefined): Promise<s
   }
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 200,
         messages: [
           {
-            role: "system",
-            content: "You are an academic research assistant. Expand the user's statement into a precise academic search query. Extract key concepts, add relevant synonyms, and identify the main research topic. Return ONLY the expanded search query, no explanation.",
-          },
-          {
             role: "user",
-            content: `Expand this statement into an academic search query: "${query}"`,
+            content: `You are an academic research assistant. Expand this statement into a precise academic search query. Extract key concepts, add relevant synonyms, and identify the main research topic. Return ONLY the expanded search query, no explanation.
+
+Statement: "${query}"`,
           },
         ],
       }),
@@ -119,10 +124,56 @@ async function expandQuery(query: string, apiKey: string | undefined): Promise<s
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content?.trim() || query;
+    return data.content[0]?.text?.trim() || query;
   } catch (error) {
     console.error("Error expanding query:", error);
     return query;
+  }
+}
+
+async function searchTavily(query: string): Promise<any[]> {
+  const TAVILY_API_KEY = Deno.env.get("TAVILY_API_KEY");
+  
+  if (!TAVILY_API_KEY) {
+    console.log("Tavily API key not found, skipping Tavily search");
+    return [];
+  }
+
+  try {
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: TAVILY_API_KEY,
+        query: query,
+        search_depth: "advanced",
+        include_answer: false,
+        include_raw_content: false,
+        max_results: 5,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Tavily API error:", response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    return (data.results || []).map((result: any) => ({
+      title: result.title || "Untitled",
+      authors: "Web Source",
+      year: new Date().getFullYear(),
+      abstract: result.content || "No content available",
+      url: result.url,
+      source: "Tavily Web Search",
+      citationCount: 0,
+      doi: null,
+    }));
+  } catch (error) {
+    console.error("Tavily search error:", error);
+    return [];
   }
 }
 
